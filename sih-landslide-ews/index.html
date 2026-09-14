@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RiskRadar — NER Landslide Early Warning System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Slab:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EDEFE6;
+    --bg-alt:#E3E6D9;
+    --surface:#F7F8F2;
+    --surface-2:#EFF1E7;
+    --ink:#1C2420;
+    --ink-soft:#4C574F;
+    --ink-faint:#7B8577;
+    --line:#CBCFBF;
+    --line-strong:#AEB39F;
+    --forest:#2F4538;
+    --forest-deep:#203026;
+    --forest-tint:#DCE3D7;
+    --risk-low:#3A6B54;
+    --risk-low-tint:#DCEBE1;
+    --risk-mod:#A8791F;
+    --risk-mod-tint:#F1E4C6;
+    --risk-high:#A03A2C;
+    --risk-high-tint:#F3DAD3;
+    --radius-s:3px;
+    --radius-m:6px;
+    --font-head:'IBM Plex Slab', serif;
+    --font-body:'IBM Plex Sans', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+    --shadow-card: 0 1px 0 rgba(28,36,32,0.04);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:16px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:var(--font-head);
+    font-weight:600;
+    margin:0;
+    color:var(--ink);
+    letter-spacing:-0.01em;
+  }
+  p{margin:0;}
+  a{color:inherit;}
+  button{font-family:var(--font-body);}
+  :focus-visible{outline:2px solid var(--forest); outline-offset:3px;}
+
+  .wrap{max-width:900px; margin:0 auto; padding:0 28px;}
+
+  /* ---------- Header ---------- */
+  .site-header{
+    position:sticky; top:0; z-index:40;
+    background:rgba(237,239,230,0.92);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .site-header .wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    height:60px;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand-mark{
+    font-family:var(--font-head); font-weight:700; font-size:19px; color:var(--forest-deep);
+  }
+  .brand-sub{
+    font-size:12.5px; color:var(--ink-faint); display:none;
+  }
+  @media (min-width:640px){ .brand-sub{display:inline;} }
+  .site-nav{display:flex; gap:22px; font-size:14px;}
+  .site-nav a{
+    text-decoration:none; color:var(--ink-soft); border-bottom:1px solid transparent;
+    padding-bottom:2px; transition:color .15s ease, border-color .15s ease;
+  }
+  .site-nav a:hover{color:var(--forest-deep); border-color:var(--forest-deep);}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    position:relative; overflow:hidden;
+    background:var(--bg-alt);
+    border-bottom:1px solid var(--line);
+  }
+  .hero .wrap{
+    position:relative; z-index:2;
+    padding:64px 28px 40px;
+  }
+  .contour{
+    position:absolute; inset:0; width:100%; height:100%;
+    z-index:1;
+  }
+  .contour path{
+    fill:none; stroke:var(--forest); stroke-width:1;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .contour path{
+      stroke-dasharray:2200;
+      stroke-dashoffset:2200;
+      animation:draw 2.4s ease-out forwards;
+    }
+    .contour path:nth-child(2){animation-delay:.15s;}
+    .contour path:nth-child(3){animation-delay:.3s;}
+    .contour path:nth-child(4){animation-delay:.45s;}
+    @keyframes draw{ to{ stroke-dashoffset:0; } }
+  }
+  .hero-eyebrow{
+    font-size:13px; color:var(--ink-soft); margin-bottom:14px; max-width:46ch;
+  }
+  .hero h1{
+    font-size:clamp(32px, 5vw, 46px);
+    line-height:1.08;
+    max-width:14ch;
+  }
+  .hero-lede{
+    margin-top:16px; max-width:56ch; color:var(--ink-soft); font-size:16.5px;
+  }
+  .hero-status{
+    margin-top:34px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    max-width:640px;
+  }
+  .hero-status div{
+    background:var(--surface);
+    padding:14px 16px;
+  }
+  .hero-status .stat-num{
+    font-family:var(--font-mono); font-size:20px; font-weight:600; color:var(--forest-deep);
+    display:block;
+  }
+  .hero-status .stat-label{
+    font-size:12.5px; color:var(--ink-faint); margin-top:2px; display:block;
+  }
+
+  /* ---------- Panels ---------- */
+  .panel{
+    border-bottom:1px solid var(--line);
+    padding:56px 0 60px;
+  }
+  .panel:last-of-type{border-bottom:none;}
+  .panel-head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+    margin-bottom:8px; flex-wrap:wrap;
+  }
+  .panel-head h2{font-size:26px;}
+  .panel-tag{
+    font-family:var(--font-mono); font-size:12.5px; color:var(--ink-faint);
+  }
+  .panel-desc{
+    color:var(--ink-soft); max-width:62ch; margin-top:10px; font-size:15px;
+  }
+
+  /* ---------- Form field groups ---------- */
+  .field-groups{
+    margin-top:36px;
+    display:grid; gap:28px;
+    grid-template-columns:1fr 1fr;
+  }
+  @media (max-width:720px){ .field-groups{grid-template-columns:1fr;} }
+  .field-group{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius-m);
+    padding:20px 22px 6px;
+  }
+  .field-group h3{
+    font-size:14.5px; font-family:var(--font-body); font-weight:600;
+    color:var(--forest-deep);
+    padding-bottom:10px; margin-bottom:14px;
+    border-bottom:1px solid var(--line);
+  }
+  .slider-field{margin-bottom:18px;}
+  .slider-field label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:13.5px; color:var(--ink-soft); margin-bottom:8px;
+  }
+  .slider-field .val{
+    font-family:var(--font-mono); font-size:13.5px; color:var(--forest-deep); font-weight:600;
+  }
+  input[type=range]{
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:4px; border-radius:2px;
+    background:var(--line-strong);
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:16px; height:16px; border-radius:50%;
+    background:var(--forest);
+    border:2px solid var(--surface);
+    box-shadow:0 0 0 1px var(--forest);
+    cursor:pointer; margin-top:0;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px; height:16px; border-radius:50%;
+    background:var(--forest); border:2px solid var(--surface);
+    box-shadow:0 0 0 1px var(--forest); cursor:pointer;
+  }
+  input[type=range]::-moz-range-track{background:transparent;}
+
+  .text-field{margin-bottom:16px;}
+  .text-field label{display:block; font-size:13.5px; color:var(--ink-soft); margin-bottom:6px;}
+  .text-field input, .text-field select{
+    width:100%; padding:10px 12px; font-size:14.5px;
+    font-family:var(--font-body); color:var(--ink);
+    background:var(--surface); border:1px solid var(--line-strong); border-radius:var(--radius-s);
+  }
+  .text-field input:focus, .text-field select:focus{border-color:var(--forest);}
+
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:560px){ .two-col{grid-template-columns:1fr;} }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:12px 22px; font-size:14.5px; font-weight:600;
+    border-radius:var(--radius-s); border:1px solid var(--forest-deep);
+    cursor:pointer; transition:background .15s ease, color .15s ease, transform .05s ease;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--forest-deep); color:var(--surface);}
+  .btn-primary:hover{background:var(--forest);}
+  .btn-primary:disabled{background:var(--ink-faint); border-color:var(--ink-faint); cursor:progress;}
+  .btn-secondary{background:transparent; color:var(--forest-deep);}
+  .btn-secondary:hover{background:var(--forest-tint);}
+  .btn-row{margin-top:22px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;}
+  .btn-hint{font-size:13px; color:var(--ink-faint);}
+
+  /* ---------- Result / gauge ---------- */
+  .result{
+    margin-top:30px; display:none;
+    border:1px solid var(--line); border-radius:var(--radius-m);
+    background:var(--surface); padding:26px 28px;
+    grid-template-columns:200px 1fr; gap:28px; align-items:center;
+  }
+  .result.show{display:grid;}
+  @media (max-width:560px){ .result{grid-template-columns:1fr; justify-items:center; text-align:center;} }
+  .gauge-wrap{position:relative; width:200px;}
+  .gauge-num{
+    position:absolute; left:0; right:0; bottom:14px; text-align:center;
+    font-family:var(--font-mono); font-size:26px; font-weight:600; color:var(--ink);
+  }
+  .result-level{
+    display:inline-block; font-size:13px; font-weight:700; letter-spacing:.02em;
+    padding:4px 10px; border-radius:20px;
+  }
+  .result-level.LOW{background:var(--risk-low-tint); color:var(--risk-low);}
+  .result-level.MODERATE{background:var(--risk-mod-tint); color:var(--risk-mod);}
+  .result-level.HIGH{background:var(--risk-high-tint); color:var(--risk-high);}
+  .result-copy{margin-top:10px; color:var(--ink-soft); font-size:14.5px; max-width:46ch;}
+  .result-meta{margin-top:12px; font-family:var(--font-mono); font-size:12.5px; color:var(--ink-faint);}
+
+  .error-banner{
+    display:none; margin-top:18px; padding:12px 16px;
+    background:var(--risk-high-tint); color:var(--risk-high);
+    border:1px solid var(--risk-high); border-radius:var(--radius-s); font-size:13.5px;
+  }
+  .error-banner.show{display:block;}
+
+  /* ---------- Field report data grid ---------- */
+  .fetched-grid{
+    margin-top:22px; display:none;
+    grid-template-columns:repeat(auto-fit, minmax(130px,1fr));
+    gap:1px; background:var(--line); border:1px solid var(--line);
+  }
+  .fetched-grid.show{display:grid;}
+  .fetched-grid div{background:var(--surface); padding:12px 14px;}
+  .fetched-grid .k{font-size:12px; color:var(--ink-faint);}
+  .fetched-grid .v{font-family:var(--font-mono); font-size:16px; color:var(--forest-deep); margin-top:2px;}
+
+  .estimate-block{margin-top:24px; display:none;}
+  .estimate-block.show{display:block;}
+  .estimate-block h3{font-size:14.5px; margin-bottom:14px; color:var(--forest-deep);}
+
+  /* ---------- Backtest ---------- */
+  .site-card{
+    margin-top:24px; border:1px solid var(--line); background:var(--surface);
+    border-radius:var(--radius-m); padding:20px 22px; display:flex; gap:20px; flex-wrap:wrap;
+  }
+  .site-card .site-fact{min-width:130px;}
+  .site-card .k{font-size:12px; color:var(--ink-faint);}
+  .site-card .v{font-family:var(--font-mono); font-size:15px; color:var(--forest-deep); margin-top:2px;}
+
+  .progress-track{
+    margin-top:20px; height:6px; background:var(--line); border-radius:3px; overflow:hidden; display:none;
+  }
+  .progress-track.show{display:block;}
+  .progress-fill{height:100%; width:0%; background:var(--forest); transition:width .1s linear;}
+
+  .live-alert{
+    margin-top:16px; padding:12px 16px; border-radius:var(--radius-s);
+    font-size:14px; display:none; border:1px solid var(--line);
+  }
+  .live-alert.show{display:block;}
+  .live-alert.LOW{background:var(--risk-low-tint); color:var(--risk-low); border-color:var(--risk-low);}
+  .live-alert.MODERATE{background:var(--risk-mod-tint); color:var(--risk-mod); border-color:var(--risk-mod);}
+  .live-alert.HIGH{background:var(--risk-high-tint); color:var(--risk-high); border-color:var(--risk-high);}
+
+  .chart-box{margin-top:24px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m); padding:18px; display:none; height:280px;}
+  .chart-box.show{display:block;}
+
+  .verdict{
+    margin-top:20px; padding:16px 20px; border-radius:var(--radius-m); display:none;
+    font-size:15px; border:1px solid var(--line);
+  }
+  .verdict.show{display:block;}
+  .verdict.good{background:var(--risk-low-tint); color:var(--risk-low); border-color:var(--risk-low);}
+  .verdict.warn{background:var(--risk-mod-tint); color:var(--risk-mod); border-color:var(--risk-mod);}
+
+  table.log-table{
+    margin-top:20px; width:100%; border-collapse:collapse; font-size:13px; display:none;
+  }
+  table.log-table.show{display:table;}
+  table.log-table th, table.log-table td{
+    text-align:left; padding:7px 10px; border-bottom:1px solid var(--line);
+    font-family:var(--font-mono);
+  }
+  table.log-table th{color:var(--ink-faint); font-weight:500; font-size:11.5px;}
+  .log-scroll{max-height:260px; overflow-y:auto; margin-top:4px; border:1px solid var(--line); border-radius:var(--radius-s); display:none;}
+  .log-scroll.show{display:block;}
+
+  /* ---------- Settings ---------- */
+  .settings{
+    margin-top:0; font-size:12.5px; color:var(--ink-faint);
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .settings input{
+    font-family:var(--font-mono); font-size:12.5px; padding:5px 8px;
+    border:1px solid var(--line-strong); border-radius:var(--radius-s);
+    background:var(--surface); color:var(--ink-soft); width:210px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{padding:36px 0 60px; color:var(--ink-faint); font-size:12.5px;}
+  footer .wrap{border-top:1px solid var(--line); padding-top:22px;}
+  footer p + p{margin-top:6px;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <div class="brand">
+      <span class="brand-mark">RiskRadar</span>
+      <span class="brand-sub">NER Landslide Early Warning</span>
+    </div>
+    <nav class="site-nav">
+      <a href="#manual">Manual check</a>
+      <a href="#field">Field report</a>
+      <a href="#backtest">Backtest</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <svg class="contour" viewBox="0 0 900 340" preserveAspectRatio="none">
+    <path d="M-10,260 C120,200 180,300 280,240 C380,180 440,260 540,220 C640,180 700,240 800,200 C860,178 900,190 910,185" />
+    <path d="M-10,300 C100,260 200,330 300,290 C420,240 480,300 600,270 C700,244 760,290 910,250" />
+    <path d="M-10,220 C140,150 220,230 340,180 C440,138 520,190 640,160 C730,138 800,170 910,150" />
+    <path d="M-10,340 C120,320 260,345 380,320 C500,296 600,335 720,315 C800,302 860,315 910,310" />
+  </svg>
+  <div class="wrap">
+    <p class="hero-eyebrow">Rainfall, terrain and seismic monitoring for India's Northeast</p>
+    <h1>Read the slope before it moves.</h1>
+    <p class="hero-lede">RiskRadar scores landslide risk from rainfall, soil, groundwater and terrain
+      data, so villages across Assam, Meghalaya, Manipur and the surrounding hill states get a
+      warning before the ground does.</p>
+    <div class="hero-status">
+      <div><span class="stat-num">14</span><span class="stat-label">Model input signals</span></div>
+      <div><span class="stat-num">8</span><span class="stat-label">States covered</span></div>
+      <div><span class="stat-num">3</span><span class="stat-label">Risk tiers — low / moderate / high</span></div>
+    </div>
+  </div>
+</section>
+
+<main class="wrap">
+
+  <!-- ================= MANUAL CHECK ================= -->
+  <section class="panel" id="manual">
+    <div class="panel-head">
+      <h2>Manual risk check</h2>
+      <span class="panel-tag">/predict</span>
+    </div>
+    <p class="panel-desc">Set conditions for a single site by hand and send them straight to the
+      model. Useful for testing thresholds or walking through a scenario slope by slope.</p>
+
+    <div class="field-groups">
+      <div class="field-group">
+        <h3>Rainfall</h3>
+        <div class="slider-field">
+          <label>Daily rainfall <span class="val" data-out="m_rainfall_mm">100 mm</span></label>
+          <input type="range" id="m_rainfall_mm" min="0" max="400" value="100" step="1">
+        </div>
+        <div class="slider-field">
+          <label>Rainfall intensity <span class="val" data-out="m_rainfall_intensity_mmhr">15 mm/hr</span></label>
+          <input type="range" id="m_rainfall_intensity_mmhr" min="0" max="80" value="15" step="1">
+        </div>
+        <div class="slider-field">
+          <label>3-day cumulative <span class="val" data-out="m_rainfall_3day_cumulative">300 mm</span></label>
+          <input type="range" id="m_rainfall_3day_cumulative" min="0" max="900" value="300" step="1">
+        </div>
+        <div class="slider-field">
+          <label>15-day cumulative <span class="val" data-out="m_rainfall_15day_cumulative">200 mm</span></label>
+          <input type="range" id="m_rainfall_15day_cumulative" min="0" max="600" value="200" step="1">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <h3>Terrain</h3>
+        <div class="slider-field">
+          <label>Slope angle <span class="val" data-out="m_slope_angle">25°</span></label>
+          <input type="range" id="m_slope_angle" min="0" max="60" value="25" step="1">
+        </div>
+        <div class="slider-field">
+          <label>Elevation <span class="val" data-out="m_elevation_m">500 m</span></label>
+          <input type="range" id="m_elevation_m" min="50" max="1900" value="500" step="10">
+        </div>
+        <div class="slider-field">
+          <label>Distance to river <span class="val" data-out="m_distance_to_river_m">1000 m</span></label>
+          <input type="range" id="m_distance_to_river_m" min="0" max="5000" value="1000" step="50">
+        </div>
+        <div class="slider-field">
+          <label>Soil / rock weakness <span class="val" data-out="m_soil_weakness_score">0.50</span></label>
+          <input type="range" id="m_soil_weakness_score" min="0" max="1" value="0.5" step="0.01">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <h3>Environmental</h3>
+        <div class="slider-field">
+          <label>Temperature <span class="val" data-out="m_temperature_c">25°C</span></label>
+          <input type="range" id="m_temperature_c" min="15" max="40" value="25" step="1">
+        </div>
+        <div class="slider-field">
+          <label>Wind speed <span class="val" data-out="m_wind_speed_kmh">15 km/h</span></label>
+          <input type="range" id="m_wind_speed_kmh" min="0" max="80" value="15" step="1">
+        </div>
+        <div class="slider-field">
+          <label>Soil moisture <span class="val" data-out="m_soil_moisture">50%</span></label>
+          <input type="range" id="m_soil_moisture" min="0" max="100" value="50" step="1">
+        </div>
+        <div class="slider-field">
+          <label>Groundwater / root-zone <span class="val" data-out="m_groundwater_level">50%</span></label>
+          <input type="range" id="m_groundwater_level" min="0" max="100" value="50" step="1">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <h3>Seismic &amp; vegetation</h3>
+        <div class="slider-field">
+          <label>Seismic activity score <span class="val" data-out="m_seismic_activity_score">2.0</span></label>
+          <input type="range" id="m_seismic_activity_score" min="0" max="10" value="2" step="0.1">
+        </div>
+        <div class="slider-field">
+          <label>Vegetation cover (NDVI) <span class="val" data-out="m_vegetation_ndvi">0.50</span></label>
+          <input type="range" id="m_vegetation_ndvi" min="0" max="1" value="0.5" step="0.01">
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="manualPredictBtn">Check risk</button>
+      <span class="btn-hint">Sends these 14 values to the model running at your API address.</span>
+    </div>
+    <div class="error-banner" id="manualError"></div>
+
+    <div class="result" id="manualResult">
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 220 130" width="200" height="118">
+          <path d="M20,110 A90,90 0 0 1 29.8,69.1" stroke="#3A6B54" stroke-width="16" fill="none"/>
+          <path d="M29.8,69.1 A90,90 0 0 1 69.1,29.8" stroke="#A8791F" stroke-width="16" fill="none"/>
+          <path d="M69.1,29.8 A90,90 0 0 1 200,110" stroke="#A03A2C" stroke-width="16" fill="none"/>
+          <g id="manualNeedle" style="transform-origin:110px 110px; transform:rotate(-90deg); transition:transform .6s cubic-bezier(.2,.8,.2,1);">
+            <line x1="110" y1="110" x2="110" y2="34" stroke="#1C2420" stroke-width="3" stroke-linecap="round"/>
+          </g>
+          <circle cx="110" cy="110" r="6" fill="#1C2420"/>
+        </svg>
+        <div class="gauge-num" id="manualGaugeNum">0%</div>
+      </div>
+      <div>
+        <span class="result-level" id="manualLevel">LOW</span>
+        <p class="result-copy" id="manualCopy"></p>
+        <p class="result-meta" id="manualMeta"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FIELD REPORT ================= -->
+  <section class="panel" id="field">
+    <div class="panel-head">
+      <h2>Field report</h2>
+      <span class="panel-tag">open-meteo · nasa power · usgs</span>
+    </div>
+    <p class="panel-desc">Pick a district and RiskRadar pulls live rainfall, groundwater and
+      seismic readings for that location. Terrain values are estimated — adjust them if you know
+      the local slope and land cover, then run the model.</p>
+
+    <div class="two-col" style="margin-top:28px;">
+      <div class="text-field">
+        <label for="f_name">Name (optional)</label>
+        <input type="text" id="f_name" placeholder="Reporting officer">
+      </div>
+      <div class="text-field">
+        <label for="f_contact">Contact number (optional)</label>
+        <input type="text" id="f_contact" placeholder="For alert delivery">
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="text-field">
+        <label for="f_state">State</label>
+        <select id="f_state"></select>
+      </div>
+      <div class="text-field">
+        <label for="f_district">District</label>
+        <select id="f_district"></select>
+      </div>
+    </div>
+    <div class="text-field">
+      <label for="f_village">Village / locality (optional, improves accuracy)</label>
+      <input type="text" id="f_village" placeholder="e.g. Tupul">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="fieldFetchBtn">Locate &amp; fetch data</button>
+      <span class="btn-hint" id="fieldStatus"></span>
+    </div>
+    <div class="error-banner" id="fieldError"></div>
+
+    <div class="fetched-grid" id="fieldGrid"></div>
+
+    <div class="estimate-block" id="fieldEstimates">
+      <h3>Estimated — adjust if you know the local terrain</h3>
+      <div class="field-groups" style="grid-template-columns:1fr 1fr;">
+        <div class="field-group">
+          <div class="slider-field">
+            <label>Slope angle <span class="val" data-out="e_slope">30°</span></label>
+            <input type="range" id="e_slope" min="0" max="60" value="30" step="1">
+          </div>
+          <div class="slider-field">
+            <label>Distance to river <span class="val" data-out="e_river">500 m</span></label>
+            <input type="range" id="e_river" min="0" max="5000" value="500" step="50">
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="slider-field">
+            <label>Vegetation cover (NDVI) <span class="val" data-out="e_ndvi">0.50</span></label>
+            <input type="range" id="e_ndvi" min="0" max="1" value="0.5" step="0.01">
+          </div>
+          <div class="slider-field">
+            <label>Soil / rock weakness <span class="val" data-out="e_weak">0.50</span></label>
+            <input type="range" id="e_weak" min="0" max="1" value="0.5" step="0.01">
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="fieldPredictBtn">Predict risk</button>
+      </div>
+    </div>
+
+    <div class="result" id="fieldResult">
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 220 130" width="200" height="118">
+          <path d="M20,110 A90,90 0 0 1 29.8,69.1" stroke="#3A6B54" stroke-width="16" fill="none"/>
+          <path d="M29.8,69.1 A90,90 0 0 1 69.1,29.8" stroke="#A8791F" stroke-width="16" fill="none"/>
+          <path d="M69.1,29.8 A90,90 0 0 1 200,110" stroke="#A03A2C" stroke-width="16" fill="none"/>
+          <g id="fieldNeedle" style="transform-origin:110px 110px; transform:rotate(-90deg); transition:transform .6s cubic-bezier(.2,.8,.2,1);">
+            <line x1="110" y1="110" x2="110" y2="34" stroke="#1C2420" stroke-width="3" stroke-linecap="round"/>
+          </g>
+          <circle cx="110" cy="110" r="6" fill="#1C2420"/>
+        </svg>
+        <div class="gauge-num" id="fieldGaugeNum">0%</div>
+      </div>
+      <div>
+        <span class="result-level" id="fieldLevel">LOW</span>
+        <p class="result-copy" id="fieldCopy"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BACKTEST ================= -->
+  <section class="panel" id="backtest">
+    <div class="panel-head">
+      <h2>Historical backtest</h2>
+      <span class="panel-tag">Tupul, Manipur — 30 Jun 2022</span>
+    </div>
+    <p class="panel-desc">Replays 60 days of real rainfall, groundwater and seismic data leading
+      up to the Tupul landslide, which killed 61 people, and checks how early the model would
+      have raised the alarm.</p>
+
+    <div class="site-card">
+      <div class="site-fact"><div class="k">Coordinates</div><div class="v">24.804, 93.674</div></div>
+      <div class="site-fact"><div class="k">Documented slope</div><div class="v">42°</div></div>
+      <div class="site-fact"><div class="k">Elevation</div><div class="v">1,063 m</div></div>
+      <div class="site-fact"><div class="k">Vegetation (NDVI)</div><div class="v">0.30 — cleared</div></div>
+      <div class="site-fact"><div class="k">Soil / rock weakness</div><div class="v">0.85 — fractured</div></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="backtestBtn">Run backtest</button>
+      <span class="btn-hint" id="backtestStatus"></span>
+    </div>
+    <div class="error-banner" id="backtestError"></div>
+
+    <div class="progress-track" id="backtestProgress"><div class="progress-fill" id="backtestProgressFill"></div></div>
+    <div class="live-alert" id="backtestAlert"></div>
+    <div class="chart-box" id="backtestChartBox"><canvas id="backtestChart"></canvas></div>
+    <div class="verdict" id="backtestVerdict"></div>
+
+    <div class="log-scroll" id="backtestLogScroll">
+      <table class="log-table" id="backtestLog">
+        <thead><tr>
+          <th>Date</th><th>Rainfall</th><th>Intensity</th><th>Soil moist.</th><th>Groundwater</th><th>Risk</th><th>Conf.</th>
+        </tr></thead>
+        <tbody id="backtestLogBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="settings">
+      <span>API address</span>
+      <input type="text" id="apiBase" value="http://127.0.0.1:8000">
+    </div>
+    <p style="margin-top:16px;">Weather from Open-Meteo, soil and groundwater proxies from NASA POWER,
+      seismic events from USGS, elevation from Open-Elevation. All fetched live in your browser.</p>
+    <p>RiskRadar is a decision-support tool, not a certified hazard warning system. Always follow
+      guidance from local disaster management authorities.</p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+(function(){
+
+  const apiBaseInput = document.getElementById('apiBase');
+  const apiBase = () => apiBaseInput.value.replace(/\/+$/,'');
+
+  /* ---------------- shared helpers ---------------- */
+
+  function initRangeFill(input){
+    const update = () => {
+      const min = parseFloat(input.min), max = parseFloat(input.max), val = parseFloat(input.value);
+      const pct = ((val - min) / (max - min)) * 100;
+      input.style.background = `linear-gradient(to right, var(--forest) ${pct}%, var(--line-strong) ${pct}%)`;
+    };
+    input.addEventListener('input', update);
+    update();
+  }
+
+  function bindReadout(input, formatter){
+    const out = document.querySelector(`[data-out="${input.id}"]`);
+    const render = () => { out.textContent = formatter(parseFloat(input.value)); };
+    input.addEventListener('input', render);
+    render();
+  }
+
+  document.querySelectorAll('input[type=range]').forEach(initRangeFill);
+
+  const fmt = {
+    mm: v => `${v} mm`,
+    mmhr: v => `${v} mm/hr`,
+    deg: v => `${v}°`,
+    m: v => `${v} m`,
+    pct: v => `${v}%`,
+    dec2: v => v.toFixed(2),
+    dec1: v => v.toFixed(1),
+    c: v => `${v}°C`,
+    kmh: v => `${v} km/h`,
+  };
+
+  bindReadout(document.getElementById('m_rainfall_mm'), fmt.mm);
+  bindReadout(document.getElementById('m_rainfall_intensity_mmhr'), fmt.mmhr);
+  bindReadout(document.getElementById('m_rainfall_3day_cumulative'), fmt.mm);
+  bindReadout(document.getElementById('m_rainfall_15day_cumulative'), fmt.mm);
+  bindReadout(document.getElementById('m_slope_angle'), fmt.deg);
+  bindReadout(document.getElementById('m_elevation_m'), fmt.m);
+  bindReadout(document.getElementById('m_distance_to_river_m'), fmt.m);
+  bindReadout(document.getElementById('m_soil_weakness_score'), fmt.dec2);
+  bindReadout(document.getElementById('m_temperature_c'), fmt.c);
+  bindReadout(document.getElementById('m_wind_speed_kmh'), fmt.kmh);
+  bindReadout(document.getElementById('m_soil_moisture'), fmt.pct);
+  bindReadout(document.getElementById('m_groundwater_level'), fmt.pct);
+  bindReadout(document.getElementById('m_seismic_activity_score'), fmt.dec1);
+  bindReadout(document.getElementById('m_vegetation_ndvi'), fmt.dec2);
+
+  bindReadout(document.getElementById('e_slope'), fmt.deg);
+  bindReadout(document.getElementById('e_river'), fmt.m);
+  bindReadout(document.getElementById('e_ndvi'), fmt.dec2);
+  bindReadout(document.getElementById('e_weak'), fmt.dec2);
+
+  async function predictRisk(payload){
+    const res = await fetch(`${apiBase()}/predict`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok){
+      const text = await res.text().catch(()=> '');
+      throw new Error(`Backend returned ${res.status}. ${text}`.trim());
+    }
+    return res.json();
+  }
+
+  function setGauge(prefix, confidencePercent, riskLevel){
+    const p = Math.max(0, Math.min(100, confidencePercent));
+    const deg = (p/100*180) - 90;
+    document.getElementById(`${prefix}Needle`).style.transform = `rotate(${deg}deg)`;
+    document.getElementById(`${prefix}GaugeNum`).textContent = `${p.toFixed(1)}%`;
+    const levelEl = document.getElementById(`${prefix}Level`);
+    levelEl.textContent = riskLevel;
+    levelEl.className = `result-level ${riskLevel}`;
+  }
+
+  function showError(el, message){
+    el.textContent = message;
+    el.classList.add('show');
+  }
+  function hideError(el){
+    el.classList.remove('show');
+  }
+
+  const copyByLevel = {
+    LOW: 'Conditions are within the range the model treats as background risk. No action needed beyond routine monitoring.',
+    MODERATE: 'Elevated risk. Worth flagging to local disaster management contacts and watching rainfall over the next 24–48 hours.',
+    HIGH: 'The model rates this a high-risk configuration. Treat as an early warning and follow local evacuation guidance.'
+  };
+
+  /* ---------------- Manual check ---------------- */
+
+  const manualIds = ['rainfall_mm','rainfall_intensity_mmhr','rainfall_3day_cumulative',
+    'rainfall_15day_cumulative','temperature_c','wind_speed_kmh','soil_moisture',
+    'groundwater_level','slope_angle','elevation_m','distance_to_river_m',
+    'seismic_activity_score','vegetation_ndvi','soil_weakness_score'];
+
+  document.getElementById('manualPredictBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('manualPredictBtn');
+    const errEl = document.getElementById('manualError');
+    hideError(errEl);
+    const payload = {};
+    manualIds.forEach(key => { payload[key] = parseFloat(document.getElementById(`m_${key}`).value); });
+
+    btn.disabled = true; btn.textContent = 'Checking…';
+    try{
+      const result = await predictRisk(payload);
+      document.getElementById('manualResult').classList.add('show');
+      setGauge('manual', result.confidence_percent, result.risk_level);
+      document.getElementById('manualCopy').textContent = copyByLevel[result.risk_level] || '';
+      document.getElementById('manualMeta').textContent =
+        `prediction=${result.prediction} · confidence=${result.confidence_percent}%`;
+    }catch(err){
+      showError(errEl, `Could not reach the model — ${err.message}. Check the API address in the footer and that the FastAPI server is running.`);
+    }finally{
+      btn.disabled = false; btn.textContent = 'Check risk';
+    }
+  });
+
+  /* ---------------- Field report ---------------- */
+
+  const nerLocations = {
+    "Assam": ["Kamrup (Guwahati)", "Dima Hasao (Haflong)", "Karbi Anglong", "Nagaon", "Sonitpur", "Jorhat", "Dibrugarh", "Cachar (Silchar)"],
+    "Meghalaya": ["East Khasi Hills (Shillong)", "West Khasi Hills", "Ri Bhoi", "Jaintia Hills", "East Garo Hills"],
+    "Mizoram": ["Aizawl", "Lunglei", "Champhai", "Kolasib", "Serchhip"],
+    "Nagaland": ["Kohima", "Dimapur", "Mokokchung", "Wokha", "Zunheboto"],
+    "Manipur": ["Imphal East", "Imphal West", "Churachandpur", "Ukhrul", "Senapati", "Noney"],
+    "Tripura": ["West Tripura (Agartala)", "Gomati", "Dhalai", "North Tripura"],
+    "Arunachal Pradesh": ["Papum Pare (Itanagar)", "West Kameng", "East Siang", "Lohit"],
+    "Sikkim": ["East Sikkim (Gangtok)", "West Sikkim", "North Sikkim", "South Sikkim"]
+  };
+
+  const stateSel = document.getElementById('f_state');
+  const districtSel = document.getElementById('f_district');
+  Object.keys(nerLocations).forEach(s => {
+    const opt = document.createElement('option'); opt.value = s; opt.textContent = s;
+    stateSel.appendChild(opt);
+  });
+  function fillDistricts(){
+    districtSel.innerHTML = '';
+    nerLocations[stateSel.value].forEach(d => {
+      const opt = document.createElement('option'); opt.value = d; opt.textContent = d;
+      districtSel.appendChild(opt);
+    });
+  }
+  stateSel.addEventListener('change', fillDistricts);
+  fillDistricts();
+
+  let fieldFetchedCache = null;
+
+  document.getElementById('fieldFetchBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('fieldFetchBtn');
+    const errEl = document.getElementById('fieldError');
+    const statusEl = document.getElementById('fieldStatus');
+    hideError(errEl);
+    document.getElementById('fieldGrid').classList.remove('show');
+    document.getElementById('fieldEstimates').classList.remove('show');
+    document.getElementById('fieldResult').classList.remove('show');
+
+    const village = document.getElementById('f_village').value.trim();
+    const district = districtSel.value;
+    const searchQuery = village ? `${village}, ${district}` : district;
+
+    btn.disabled = true;
+    try{
+      statusEl.textContent = 'Locating…';
+      let geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(searchQuery)}&count=1`).then(r=>r.json());
+      if(!geo.results){
+        const fallback = district.split(' (')[0];
+        geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(fallback)}&count=1`).then(r=>r.json());
+      }
+      if(!geo.results){
+        showError(errEl, 'Could not locate this place. Try a different district.');
+        return;
+      }
+      const {latitude: lat, longitude: lon, name: foundName} = geo.results[0];
+      statusEl.textContent = `Matched ${foundName} (${lat.toFixed(3)}, ${lon.toFixed(3)}) — fetching data…`;
+
+      const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,temperature_2m_max,windspeed_10m_max&hourly=precipitation&past_days=15&forecast_days=1&timezone=auto`).then(r=>r.json());
+
+      const dailyRain = weatherRes.daily.precipitation_sum.map(v => v ?? 0);
+      const todayRainfall = dailyRain[dailyRain.length-1];
+      const cumulative3day = dailyRain.slice(-4,-1).reduce((a,b)=>a+b,0);
+      const cumulative15day = dailyRain.slice(0,-1).reduce((a,b)=>a+b,0);
+      const todayTemp = weatherRes.daily.temperature_2m_max[weatherRes.daily.temperature_2m_max.length-1] ?? 25;
+      const todayWind = weatherRes.daily.windspeed_10m_max[weatherRes.daily.windspeed_10m_max.length-1] ?? 10;
+
+      const lastDailyDate = weatherRes.daily.time[weatherRes.daily.time.length-1];
+      const hourlyToday = weatherRes.hourly.time
+        .map((t,i)=>({t, v: weatherRes.hourly.precipitation[i] ?? 0}))
+        .filter(x => x.t.slice(0,10) === lastDailyDate)
+        .map(x => x.v);
+      const intensityToday = hourlyToday.length ? Math.max(...hourlyToday) : 0;
+
+      const elevRes = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lon}`).then(r=>r.json());
+      const elevation = elevRes.results[0].elevation;
+
+      const today = new Date();
+      const pastStart = new Date(today.getTime() - 15*86400000);
+      const ymd = d => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+
+      const powerRes = await fetch(`https://power.larc.nasa.gov/api/temporal/daily/point?parameters=GWETTOP,GWETROOT&community=AG&longitude=${lon}&latitude=${lat}&start=${ymd(pastStart)}&end=${ymd(today)}&format=JSON`).then(r=>r.json());
+      const gwetTopVals = Object.values(powerRes?.properties?.parameter?.GWETTOP || {});
+      const gwetRootVals = Object.values(powerRes?.properties?.parameter?.GWETROOT || {});
+      const soilMoistureAuto = gwetTopVals.length ? Math.max(0, gwetTopVals[gwetTopVals.length-1]) * 100 : 40;
+      const groundwaterAuto = gwetRootVals.length ? Math.max(0, gwetRootVals[gwetRootVals.length-1]) * 100 : 40;
+
+      const usgsRes = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${pastStart.toISOString().slice(0,10)}&endtime=${today.toISOString().slice(0,10)}&latitude=${lat}&longitude=${lon}&maxradiuskm=200&minmagnitude=2.0`).then(r=>r.json());
+      const quakes = usgsRes.features || [];
+      const seismicAuto = quakes.length
+        ? Math.min(10, quakes.reduce((sum,q)=> sum + (q.properties.mag||0), 0) / 2)
+        : 0.5;
+
+      fieldFetchedCache = {
+        lat, lon, todayRainfall, cumulative3day, cumulative15day, todayTemp, todayWind,
+        intensityToday, elevation, soilMoistureAuto, groundwaterAuto, seismicAuto, quakeCount: quakes.length
+      };
+
+      const grid = document.getElementById('fieldGrid');
+      grid.innerHTML = `
+        <div><div class="k">Rainfall today</div><div class="v">${todayRainfall.toFixed(1)} mm</div></div>
+        <div><div class="k">15-day cumulative</div><div class="v">${cumulative15day.toFixed(0)} mm</div></div>
+        <div><div class="k">Elevation</div><div class="v">${elevation} m</div></div>
+        <div><div class="k">Seismic events (15d)</div><div class="v">${quakes.length}</div></div>
+        <div><div class="k">Soil moisture</div><div class="v">${soilMoistureAuto.toFixed(1)}%</div></div>
+        <div><div class="k">Groundwater</div><div class="v">${groundwaterAuto.toFixed(1)}%</div></div>
+      `;
+      grid.classList.add('show');
+      document.getElementById('fieldEstimates').classList.add('show');
+      statusEl.textContent = `Live data for ${foundName}. Adjust terrain estimates below, then predict.`;
+
+    }catch(err){
+      showError(errEl, `Could not fetch data — ${err.message}`);
+      statusEl.textContent = '';
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('fieldPredictBtn').addEventListener('click', async () => {
+    if(!fieldFetchedCache) return;
+    const btn = document.getElementById('fieldPredictBtn');
+    const errEl = document.getElementById('fieldError');
+    hideError(errEl);
+    const d = fieldFetchedCache;
+    const payload = {
+      rainfall_mm: d.todayRainfall,
+      rainfall_intensity_mmhr: d.intensityToday,
+      rainfall_3day_cumulative: d.cumulative3day,
+      rainfall_15day_cumulative: d.cumulative15day,
+      temperature_c: d.todayTemp,
+      wind_speed_kmh: d.todayWind,
+      soil_moisture: d.soilMoistureAuto,
+      groundwater_level: d.groundwaterAuto,
+      slope_angle: parseFloat(document.getElementById('e_slope').value),
+      elevation_m: d.elevation,
+      distance_to_river_m: parseFloat(document.getElementById('e_river').value),
+      seismic_activity_score: d.seismicAuto,
+      vegetation_ndvi: parseFloat(document.getElementById('e_ndvi').value),
+      soil_weakness_score: parseFloat(document.getElementById('e_weak').value)
+    };
+    btn.disabled = true; btn.textContent = 'Predicting…';
+    try{
+      const result = await predictRisk(payload);
+      const name = document.getElementById('f_name').value.trim() || 'this site';
+      document.getElementById('fieldResult').classList.add('show');
+      setGauge('field', result.confidence_percent, result.risk_level);
+      document.getElementById('fieldCopy').textContent =
+        `${result.risk_level === 'HIGH' ? 'High-risk reading' : result.risk_level === 'MODERATE' ? 'Moderate-risk reading' : 'Low-risk reading'} for ${name} — ${copyByLevel[result.risk_level]}`;
+    }catch(err){
+      showError(errEl, `Could not reach the model — ${err.message}`);
+    }finally{
+      btn.disabled = false; btn.textContent = 'Predict risk';
+    }
+  });
+
+  /* ---------------- Backtest ---------------- */
+
+  let backtestChart = null;
+
+  document.getElementById('backtestBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('backtestBtn');
+    const errEl = document.getElementById('backtestError');
+    const statusEl = document.getElementById('backtestStatus');
+    hideError(errEl);
+    document.getElementById('backtestAlert').classList.remove('show');
+    document.getElementById('backtestVerdict').classList.remove('show');
+    document.getElementById('backtestLogScroll').classList.remove('show');
+    document.getElementById('backtestLogBody').innerHTML = '';
+    const progressTrack = document.getElementById('backtestProgress');
+    const progressFill = document.getElementById('backtestProgressFill');
+    progressTrack.classList.add('show');
+    progressFill.style.width = '0%';
+
+    btn.disabled = true;
+    try{
+      const siteLat = 24.804, siteLon = 93.674;
+      const eventDate = new Date(Date.UTC(2022,5,30));
+      const lookbackDays = 60;
+      const startDate = new Date(eventDate.getTime() - lookbackDays*86400000);
+      const iso = d => d.toISOString().slice(0,10);
+
+      const documentedSlope = 42.0, documentedElevation = 1063.0, documentedRiver = 80.0,
+            documentedNdvi = 0.30, documentedWeakness = 0.85;
+
+      statusEl.textContent = 'Fetching historical daily weather…';
+      const dailyRes = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${siteLat}&longitude=${siteLon}&start_date=${iso(startDate)}&end_date=${iso(eventDate)}&daily=precipitation_sum,temperature_2m_max,windspeed_10m_max&timezone=Asia/Kolkata`).then(r=>r.json());
+
+      statusEl.textContent = 'Fetching hourly rainfall for intensity…';
+      const hourlyRes = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${siteLat}&longitude=${siteLon}&start_date=${iso(startDate)}&end_date=${iso(eventDate)}&hourly=precipitation&timezone=Asia/Kolkata`).then(r=>r.json());
+
+      statusEl.textContent = 'Fetching soil moisture & groundwater proxy…';
+      const ymd = d => `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}`;
+      const soilRes = await fetch(`https://power.larc.nasa.gov/api/temporal/daily/point?parameters=GWETTOP,GWETROOT&community=AG&longitude=${siteLon}&latitude=${siteLat}&start=${ymd(startDate)}&end=${ymd(eventDate)}&format=JSON`).then(r=>r.json());
+
+      statusEl.textContent = 'Fetching seismic activity…';
+      const usgsRes = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${iso(startDate)}&endtime=${iso(eventDate)}&latitude=${siteLat}&longitude=${siteLon}&maxradiuskm=200&minmagnitude=2.0`).then(r=>r.json());
+
+      const dates = dailyRes.daily.time;
+      const rainfallSeries = dailyRes.daily.precipitation_sum.map(v => v ?? 0);
+      const tempSeries = dailyRes.daily.temperature_2m_max.map(v => v ?? 25);
+      const windSeries = dailyRes.daily.windspeed_10m_max.map(v => v ?? 5);
+
+      const rolling = (arr, window) => arr.map((_,i) => {
+        const start = Math.max(0, i-window+1);
+        return arr.slice(start, i+1).reduce((a,b)=>a+b,0);
+      });
+      const cum3 = rolling(rainfallSeries, 3);
+      const cum15 = rolling(rainfallSeries, 15);
+
+      const intensityByDate = {};
+      hourlyRes.hourly.time.forEach((t,i) => {
+        const d = t.slice(0,10);
+        const p = hourlyRes.hourly.precipitation[i] ?? 0;
+        intensityByDate[d] = Math.max(intensityByDate[d] || 0, p);
+      });
+
+      const gwetTop = soilRes?.properties?.parameter?.GWETTOP || {};
+      const gwetRoot = soilRes?.properties?.parameter?.GWETROOT || {};
+      const keyToDate = k => `${k.slice(0,4)}-${k.slice(4,6)}-${k.slice(6,8)}`;
+      const soilByDate = {}, groundByDate = {};
+      Object.entries(gwetTop).forEach(([k,v]) => { soilByDate[keyToDate(k)] = (v!==undefined && v>-900) ? Math.max(0,v)*100 : 40; });
+      Object.entries(gwetRoot).forEach(([k,v]) => { groundByDate[keyToDate(k)] = (v!==undefined && v>-900) ? Math.max(0,v)*100 : 40; });
+
+      const quakeCounts = {};
+      (usgsRes.features || []).forEach(f => {
+        const eqDate = new Date(f.properties.time).toISOString().slice(0,10);
+        quakeCounts[eqDate] = (quakeCounts[eqDate] || 0) + (f.properties.mag || 0);
+      });
+
+      // set up chart
+      const ctx = document.getElementById('backtestChart').getContext('2d');
+      if(backtestChart) backtestChart.destroy();
+      document.getElementById('backtestChartBox').classList.add('show');
+      backtestChart = new Chart(ctx, {
+        type:'line',
+        data:{ labels:[], datasets:[
+          { label:'Rainfall (mm)', data:[], borderColor:'#2F4538', backgroundColor:'transparent', yAxisID:'y', tension:.25, pointRadius:2 },
+          { label:'Soil moisture (%)', data:[], borderColor:'#A8791F', backgroundColor:'transparent', yAxisID:'y1', tension:.25, pointRadius:2 }
+        ]},
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          animation:false,
+          interaction:{ mode:'index', intersect:false },
+          scales:{
+            y:{ position:'left', title:{display:true, text:'mm', font:{family:'IBM Plex Mono', size:11}}, ticks:{font:{family:'IBM Plex Mono', size:10}} },
+            y1:{ position:'right', title:{display:true, text:'%', font:{family:'IBM Plex Mono', size:11}}, grid:{drawOnChartArea:false}, ticks:{font:{family:'IBM Plex Mono', size:10}} },
+            x:{ ticks:{font:{family:'IBM Plex Mono', size:9}, maxRotation:60, minRotation:60} }
+          },
+          plugins:{ legend:{ labels:{font:{family:'IBM Plex Sans', size:12}} } }
+        }
+      });
+
+      const logBody = document.getElementById('backtestLogBody');
+      document.getElementById('backtestLogScroll').classList.add('show');
+      const alertEl = document.getElementById('backtestAlert');
+      alertEl.classList.add('show');
+
+      const results = [];
+      let firstHighDate = null;
+
+      for(let i=0;i<dates.length;i++){
+        const d = dates[i];
+        const payload = {
+          rainfall_mm: rainfallSeries[i],
+          rainfall_intensity_mmhr: intensityByDate[d] || 0,
+          rainfall_3day_cumulative: cum3[i],
+          rainfall_15day_cumulative: cum15[i],
+          temperature_c: tempSeries[i],
+          wind_speed_kmh: windSeries[i],
+          soil_moisture: soilByDate[d] ?? 40,
+          groundwater_level: groundByDate[d] ?? 40,
+          slope_angle: documentedSlope,
+          elevation_m: documentedElevation,
+          distance_to_river_m: documentedRiver,
+          seismic_activity_score: Math.min(10, quakeCounts[d] ?? 0.3),
+          vegetation_ndvi: documentedNdvi,
+          soil_weakness_score: documentedWeakness
+        };
+
+        let res;
+        try{
+          res = await predictRisk(payload);
+        }catch(err){
+          showError(errEl, `Model unreachable during backtest — ${err.message}`);
+          break;
+        }
+
+        results.push({date:d, ...payload, ...res});
+        if(!firstHighDate && res.risk_level === 'HIGH') firstHighDate = d;
+
+        backtestChart.data.labels.push(d);
+        backtestChart.data.datasets[0].data.push(Math.round(payload.rainfall_mm*10)/10);
+        backtestChart.data.datasets[1].data.push(Math.round(payload.soil_moisture*10)/10);
+        backtestChart.update('none');
+
+        alertEl.className = `live-alert show ${res.risk_level}`;
+        alertEl.textContent = res.risk_level === 'HIGH'
+          ? `${d}: HIGH RISK — confidence ${res.confidence_percent}%`
+          : res.risk_level === 'MODERATE'
+            ? `${d}: MODERATE RISK — confidence ${res.confidence_percent}%`
+            : `${d}: low risk — confidence ${res.confidence_percent}%`;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${d}</td><td>${payload.rainfall_mm.toFixed(1)}</td><td>${payload.rainfall_intensity_mmhr.toFixed(1)}</td><td>${payload.soil_moisture.toFixed(1)}</td><td>${payload.groundwater_level.toFixed(1)}</td><td>${res.risk_level}</td><td>${res.confidence_percent}%</td>`;
+        logBody.appendChild(row);
+        document.getElementById('backtestLogScroll').scrollTop = document.getElementById('backtestLogScroll').scrollHeight;
+
+        progressFill.style.width = `${Math.round(((i+1)/dates.length)*100)}%`;
+        statusEl.textContent = `Replaying ${d}…`;
+        await new Promise(r => setTimeout(r, 40));
+      }
+
+      const verdictEl = document.getElementById('backtestVerdict');
+      if(firstHighDate){
+        const daysEarly = Math.round((eventDate - new Date(firstHighDate)) / 86400000);
+        verdictEl.className = 'verdict show good';
+        verdictEl.textContent = `RiskRadar first flagged HIGH risk on ${firstHighDate} — ${daysEarly} day(s) before the landslide on ${iso(eventDate)}.`;
+      }else{
+        verdictEl.className = 'verdict show warn';
+        verdictEl.textContent = 'The model did not flag HIGH risk before the event — a useful finding for further tuning.';
+      }
+      statusEl.textContent = `Backtest complete — ${results.length} days replayed.`;
+
+    }catch(err){
+      showError(errEl, `Backtest failed — ${err.message}`);
+      statusEl.textContent = '';
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
