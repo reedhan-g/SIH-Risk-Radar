@@ -1,10 +1,17 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
+from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 import os
 
 app = FastAPI(title="NER Landslide Early Warning System")
+app = FastAPI(title="NER Landslide Early Warning System")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],)
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "landslide_model.pkl")
 model = joblib.load(MODEL_PATH)
